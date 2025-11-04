@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelOS - Base de Données : Fernando Brízio</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- Variables CSS --- */
+        :root {
+            --primary-bg: #0a0a1a;
+            --primary-text: #e0e0e0;
+            --accent-yellow: #ffcc00;
+            --accent-blue: #00aaff;
+            --accent-purple: #800080;
+            --accent-red: #ff0000;
+            --neon-glow: 0 0 10px currentColor, 0 0 20px currentColor;
+        }
+
+        /* --- Styles de base --- */
+        body {
+            background-color: var(--primary-bg);
+            color: var(--primary-text);
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            image-rendering: pixelated;
+            position: relative;
+            font-size: 12px;
+            line-height: 1.4;
+            user-select: none;
+            overflow: hidden;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><rect x="0" y="0" width="16" height="16" fill="%23ffcc00"/><rect x="4" y="4" width="8" height="8" fill="%230a0a1a"/></svg>'), auto;
+        }
+
+        /* --- Écran de Démarrage --- */
+        #start-screen {
+            text-align: center;
+            cursor: pointer;
+            z-index: 5000;
+            padding: 30px;
+            background: rgba(10, 10, 26, 0.95);
+            border: 4px solid var(--primary-text);
+            box-shadow: 0 0 0 4px var(--primary-bg), 0 0 30px rgba(128, 0, 128, 0.7);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #start-screen::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 204, 0, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        #start-screen:hover {
+            transform: scale(1.08) rotate(1deg);
+            box-shadow: 0 0 0 4px var(--primary-bg), 0 0 50px rgba(128, 0, 128, 0.9);
+            border-color: var(--accent-yellow);
+        }
+
+        #start-screen h1 {
+            font-size: 1.8rem;
+            color: #d0d0ff;
+            text-shadow: 3px 3px 0px var(--accent-purple), 6px 6px 0px rgba(128, 0, 128, 0.3);
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 2;
+        }
+
+        #start-screen h1:nth-child(2) {
+            color: var(--accent-yellow);
+            text-shadow: 2px 2px 0px var(--accent-purple);
+            margin-bottom: 25px;
+        }
+
+        #start-screen p {
+            font-size: 0.9rem;
+            color: var(--accent-yellow);
+            margin-top: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .terminal-line {
+            font-size: 0.7rem;
+            color: var(--accent-blue);
+            margin: 5px 0;
+            opacity: 0;
+            animation: typeIn 0.5s forwards;
+        }
+
+        .terminal-line:nth-child(1) { animation-delay: 0.5s; }
+        .terminal-line:nth-child(2) { animation-delay: 1s; }
+        .terminal-line:nth-child(3) { animation-delay: 1.5s; }
+
+        /* --- Fenêtre de contenu --- */
+        .content-window {
+            position: fixed;
+            background: rgba(20, 20, 40, 0.98);
+            border: 4px solid var(--primary-text);
+            box-shadow: 0 0 0 4px var(--primary-bg), 0 0 30px rgba(128, 0, 128, 0.7);
+            padding: 20px;
+            width: 75vw;
+            height: 82vh;
+            max-width: 950px;
+            max-height: 950px;
+            overflow: hidden;
+            z-index: 1000;
+            display: none;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            backdrop-filter: blur(5px);
+        }
+
+        .content-window::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(90deg, transparent 50%, rgba(255,255,255,0.03) 50%),
+                linear-gradient(transparent 50%, rgba(255,255,255,0.03) 50%);
+            background-size: 20px 20px;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        .window-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-text);
+        }
+
+        .window-title {
+            color: var(--accent-yellow);
+            font-size: 1rem;
+            margin: 0;
+            text-shadow: var(--neon-glow);
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .window-btn {
+            background: none;
+            border: 2px solid var(--primary-text);
+            color: var(--primary-text);
+            font-family: 'Press Start 2P', cursive;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 0.6rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .window-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .window-btn:hover::before {
+            left: 100%;
+        }
+
+        .window-btn:hover {
+            background-color: var(--accent-red);
+            color: #ffffff;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px var(--accent-red);
+        }
+
+        #minimize-btn:hover {
+            background-color: var(--accent-yellow);
+            box-shadow: 0 0 10px var(--accent-yellow);
+        }
+
+        #maximize-btn:hover {
+            background-color: var(--accent-blue);
+            box-shadow: 0 0 10px var(--accent-blue);
+        }
+
+        .window-content {
+            height: calc(100% - 80px);
+            overflow-y: auto;
+            padding-right: 10px;
+            font-size: 0.7rem;
+            line-height: 1.6;
+        }
+
+        /* Barre de défilement stylisée */
+        .window-content::-webkit-scrollbar { width: 14px; }
+        .window-content::-webkit-scrollbar-track { 
+            background: rgba(10, 10, 26, 0.5); 
+            border: 2px solid var(--primary-text);
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+        .window-content::-webkit-scrollbar-thumb { 
+            background: var(--accent-yellow); 
+            border: 2px solid var(--primary-text);
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+        .window-content::-webkit-scrollbar-thumb:hover { 
+            background: #ffd700; 
+            box-shadow: 0 0 10px var(--accent-yellow);
+        }
+
+        /* --- Sections de contenu --- */
+        .data-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 2px dashed var(--accent-purple);
+            background: rgba(128, 0, 128, 0.1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .data-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.6s;
+        }
+
+        .data-section:hover::before {
+            left: 100%;
+        }
+
+        .data-section:hover {
+            background: rgba(128, 0, 128, 0.25);
+            transform: translateX(8px) scale(1.02);
+            border-color: var(--accent-yellow);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .data-section.active-section {
+            background: rgba(128, 0, 128, 0.4);
+            border: 2px solid var(--accent-yellow);
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
+            transform: scale(1.03);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .section-icon {
+            font-size: 1.2rem;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            border: 1px solid var(--primary-text);
+        }
+
+        .data-section h4 {
+            color: var(--accent-blue);
+            font-size: 0.8rem;
+            margin: 0;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.5);
+        }
+
+        .key-data {
+            color: var(--accent-yellow);
+            font-size: 0.75rem;
+            margin-bottom: 12px;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.3);
+            border-left: 3px solid var(--accent-yellow);
+            text-shadow: 0 0 5px var(--accent-yellow);
+        }
+        
+        .list-materiaux {
+            list-style: none;
+            padding-left: 10px;
+        }
+
+        .list-materiaux li {
+            position: relative;
+            padding-left: 15px;
+            margin-bottom: 5px;
+            transition: all 0.3s;
+        }
+
+        .list-materiaux li::before {
+            content: '■';
+            color: var(--accent-yellow);
+            position: absolute;
+            left: 0;
+            font-size: 0.8rem;
+        }
+
+        .list-materiaux li:hover {
+            color: var(--accent-yellow);
+            transform: translateX(5px);
+        }
+
+        /* --- Images --- */
+        .image-container {
+            width: 100%;
+            margin: 15px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .section-image {
+            max-width: 100%;
+            max-height: 220px;
+            border: 3px solid var(--primary-text);
+            box-shadow: 0 0 15px rgba(128, 0, 128, 0.6);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: sepia(0.3) contrast(1.1);
+        }
+
+        .section-image:hover {
+            transform: scale(1.08) rotate(1deg);
+            box-shadow: 0 0 25px rgba(128, 0, 128, 0.9), 0 0 40px rgba(255, 204, 0, 0.3);
+            filter: sepia(0) contrast(1.2) brightness(1.1);
+            border-color: var(--accent-yellow);
+        }
+
+        .image-caption {
+            font-size: 0.6rem;
+            color: var(--accent-yellow);
+            margin-top: 8px;
+            font-style: italic;
+            text-shadow: 0 0 5px rgba(255, 204, 0, 0.5);
+        }
+
+        /* --- Contrôles --- */
+        .control-panel {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .audio-controls, .nav-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .audio-btn, .nav-btn {
+            background: none;
+            border: 2px solid var(--primary-text);
+            color: var(--primary-text);
+            font-family: 'Press Start 2P', cursive;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.6rem;
+            transition: all 0.3s;
+        }
+
+        .audio-btn:hover, .nav-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        #play-btn:hover {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+
+        #pause-btn:hover {
+            background-color: var(--accent-purple);
+            color: white;
+        }
+
+        #prev-btn:hover, #next-btn:hover {
+            background-color: var(--accent-yellow);
+            color: var(--primary-bg);
+        }
+
+        .progress-bar {
+            flex-grow: 1;
+            height: 8px;
+            background: rgba(10, 10, 26, 0.7);
+            border: 2px solid var(--primary-text);
+            margin: 0 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+            width: 0%;
+            transition: width 0.5s;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: progressShine 2s infinite;
+        }
+
+        /* --- Effets CRT --- */
+        .crt-overlay {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            pointer-events: none; 
+            z-index: 9999;
+            background: 
+                repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15) 0px, rgba(0, 0, 0, 0.15) 1px, transparent 1px, transparent 2px),
+                repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0px, rgba(0, 0, 0, 0.1) 1px, transparent 1px, transparent 2px);
+            opacity: 0.4;
+        }
+
+        .crt-effect {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            pointer-events: none; 
+            z-index: 9998;
+            background: radial-gradient(ellipse at center, rgba(10, 10, 26, 0) 0%, rgba(10, 10, 26, 0.8) 100%);
+            opacity: 0.6;
+        }
+
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.1) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10000;
+            animation: scanline 10s linear infinite;
+        }
+
+        /* --- Animations --- */
+        @keyframes blink-animation {
+            to { visibility: hidden; }
+        }
+
+        .blink {
+            animation: blink-animation 1s steps(5, start) infinite;
+        }
+        
+        @keyframes window-open {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7) rotate(-5deg); }
+            70% { opacity: 1; transform: translate(-50%, -50%) scale(1.05) rotate(2deg); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+        }
+
+        .window-opening {
+            animation: window-open 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes pixelate {
+            0% { filter: blur(10px) grayscale(1); transform: scale(1.2); }
+            100% { filter: blur(0) grayscale(0); transform: scale(1); }
+        }
+
+        .pixelate-in {
+            animation: pixelate 0.7s ease-out forwards;
+        }
+
+        @keyframes typeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes shine {
+            0% { transform: rotate(45deg) translateX(-100%); }
+            100% { transform: rotate(45deg) translateX(100%); }
+        }
+
+        @keyframes progressShine {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* --- Effets de particules --- */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--accent-yellow);
+            border-radius: 50%;
+            opacity: 0;
+            animation: float 15s infinite linear;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.7;
+            }
+            90% {
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(-100px) translateX(20px);
+                opacity: 0;
+            }
+        }
+
+        /* --- Mode plein écran --- */
+        .content-window.fullscreen {
+            width: 95vw;
+            height: 95vh;
+            max-width: none;
+            max-height: none;
+        }
+        
+        /* --- Styles pour le contenu principal --- */
+        .main-content {
+            padding: 20px;
+        }
+        
+        .content-paragraph {
+            margin-bottom: 20px;
+            text-align: justify;
+        }
+        
+        .content-image-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin: 25px 0;
+        }
+        
+        .content-image-container {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .section-title {
+            color: var(--accent-yellow);
+            font-size: 0.9rem;
+            margin: 25px 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px dashed var(--accent-purple);
+            text-shadow: 0 0 10px var(--accent-yellow);
+        }
+        
+        .highlight {
+            color: var(--accent-yellow);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <h1>UNE MINUTE UN DESIGNER</h1>
+        <h1>[ BASE DE DONNÉES ]</h1>
+        <div class="terminal-line">> SYSTEM BOOT: PIXEL_OS v2.1.5</div>
+        <div class="terminal-line">> LOADING DATABASE: Brizio.pkg</div>
+        <div class="terminal-line">> INITIALIZING CRT DISPLAY...</div>
+        <p class="blink">[ CLIQUEZ POUR ACCÉDER AU FICHIER BRIZIO ]</p>
+    </div>
+
+    <div id="brizio-window" class="content-window">
+        
+        <div class="window-header">
+            <h3 class="window-title">:: DATA-BASE-001 [Brizio.pkg] ::</h3>
+            <div class="window-controls">
+                <button class="window-btn" id="minimize-btn" title="Réduire">_</button>
+                <button class="window-btn" id="maximize-btn" title="Agrandir">□</button>
+                <button class="window-btn" id="close-btn" title="Fermer">X</button>
+            </div>
+        </div>
+        
+        <div class="window-content">
+            <div class="main-content">
+                <div class="image-container">
+                    <img src="https://images.adsttc.com/media/images/62ac/4de1/3e4b/3101/82f3/0453/medium_jpg/fernando-brizio-portrait.jpg" alt="Portrait de Fernando Brízio" class="section-image pixelate-in">
+                    <div class="image-caption">Fernando Brízio - Designer portugais</div>
+                </div>
+                
+                <h3 class="section-title">Introduction : Le Design comme Expérience</h3>
+                
+                <p class="content-paragraph">
+                    Fernando Brízio est un designer portugais dont l'approche bouscule la notion traditionnelle de l'objet fini. Son travail est fondamentalement axé sur l'expérimentation, la participation de l'utilisateur et la mise en scène de l'usage. Plutôt que de simplement créer une forme, Brízio conçoit des dispositifs qui interrogent la relation entre l'objet et son utilisateur, invitant ce dernier à devenir un acteur essentiel du processus créatif.
+                </p>
+                
+                <h3 class="section-title">I. La Participation et la Transformation</h3>
+                
+                <p class="content-paragraph">
+                    Les créations de Brízio sont des terrains de jeu sensibles où l'action humaine est le moteur de la forme et de la couleur.
+                </p>
+                
+                <div class="image-container">
+                    <img src="https://cdn.dezeen.com/uploads/2009/12/dezeen-painted-by-the-users-by-fernando-brizio-5.jpg" alt="Painted by the Users" class="section-image pixelate-in">
+                    <div class="image-caption">"Restarted Dress" (2005) – Robe participative</div>
+                </div>
+                
+                <p class="content-paragraph">
+                    <span class="highlight">L'Œuvre Cœur : Restarted Dress</span> Son projet emblématique, la Restarted Dress (2005), est l'illustration parfaite de cette démarche. * Il s'agit initialement d'une robe blanche équipée de feutres colorés qui, au contact du tissu, se teintent progressivement.
+                </p>
+                
+                <p class="content-paragraph">
+                    Chaque port, chaque mouvement, chaque lavage active l'encre et révèle un motif unique.
+                </p>
+                
+                <p class="content-paragraph">
+                    L'objet n'est pas statique ; il évolue, se transforme et enregistre la temporalité et l'action de son utilisateur.
+                </p>
+                
+                <p class="content-paragraph">
+                    C'est un design qui ne prend sens qu'à travers la participation active de l'humain.
+                </p>
+                
+                <p class="content-paragraph">
+                    <span class="highlight">Le Vase Évolutif : Painting with Giotto</span> Dans la même veine, le projet Painting with Giotto illustre comment le processus prime sur le produit. * Ici, la couleur ou la texture de l'objet final dépend d'un protocole d'action ou de l'intervention de l'utilisateur.
+                </p>
+                
+                <h3 class="section-title">II. L'Unicité Émergente</h3>
+                
+                <p class="content-paragraph">
+                    La deuxième notion clé du travail de Fernando Brízio est l'unicité. En intégrant le geste, l'accident et le temps dans le design, Brízio s'assure qu'aucun de ses objets ne sera jamais identique à un autre.
+                </p>
+                
+                <p class="content-paragraph">
+                    Chaque pièce devient le témoin d'une histoire singulière, celle de son usage.
+                </p>
+                
+                <p class="content-paragraph">
+                    L'objet de design fonctionnel se rapproche de l'œuvre conceptuelle, car il est le résultat d'une collaboration non planifiée entre le designer et l'utilisateur.
+                </p>
+                
+                <p class="content-paragraph">
+                    Brízio s'intéresse moins à la forme prédéfinie qu'à la manière dont un objet vit et change.
+                </p>
+                
+                <div class="content-image-row">
+                    <div class="content-image-container">
+                        <img src="https://cdn.dezeen.com/uploads/2010/11/fernando-brizio-vase-dezeen-01.jpg" alt="Vase coloré" class="section-image pixelate-in">
+                        <div class="image-caption">Vase édité par Droog Design</div>
+                    </div>
+                    <div class="content-image-container">
+                        <img src="https://media.designboom.com/wp-content/uploads/2010/11/fernando-brizio-pigment-chair-01.jpg" alt="Vue d'exposition" class="section-image pixelate-in">
+                        <div class="image-caption">Pigment Chair - Experimenta Lisbonne</div>
+                    </div>
+                </div>
+                
+                <h3 class="section-title">Conclusion : La Poésie du Processus</h3>
+                
+                <p class="content-paragraph">
+                    Fernando Brízio propose une lecture poétique du quotidien. Ses créations, souvent produites en petites séries, nous invitent à une réflexion critique sur la production et la consommation. Il déplace le regard : l'objet de design n'est pas un point d'arrivée, mais un point de départ. Le véritable design réside dans le processus et la capacité de l'objet à accueillir et à magnifier l'unicité de l'expérience de chacun.
+                </p>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="audio-controls">
+                <button class="audio-btn" id="play-btn">♪ ON</button>
+                <button class="audio-btn" id="pause-btn">♪ OFF</button>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            
+            <div class="nav-controls">
+                <button class="nav-btn" id="prev-btn">◀ PREC</button>
+                <button class="nav-btn" id="next-btn">SUIV ▶</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="crt-overlay"></div>
+    <div class="crt-effect"></div>
+    <div class="scanlines"></div>
+    <div class="particles" id="particles-container"></div>
+
+    <audio id="bg-music" loop>
+        <!-- Audio remplacé par un son synthétique généré via JavaScript -->
+    </audio>
+
+    <script>
+        // Récupération des éléments
+        const startScreen = document.getElementById('start-screen');
+        const brizioWindow = document.getElementById('brizio-window');
+        const closeBtn = document.getElementById('close-btn');
+        const minimizeBtn = document.getElementById('minimize-btn');
+        const maximizeBtn = document.getElementById('maximize-btn');
+        const playBtn = document.getElementById('play-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const bgMusic = document.getElementById('bg-music');
+        const progressFill = document.getElementById('progress-fill');
+        const particlesContainer = document.getElementById('particles-container');
+        
+        let isFullscreen = false;
+        let audioContext;
+        let oscillator;
+        let isPlaying = false;
+
+        // Création des particules
+        function createParticles() {
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.width = Math.random() * 3 + 1 + 'px';
+                particle.style.height = particle.style.width;
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Gestion de l'audio synthétique
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Créer un son synthétique
+                oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Créer un effet de modulation pour un son plus intéressant
+                const lfo = audioContext.createOscillator();
+                lfo.type = 'sine';
+                lfo.frequency.setValueAtTime(0.5, audioContext.currentTime);
+                
+                const lfoGain = audioContext.createGain();
+                lfoGain.gain.setValueAtTime(10, audioContext.currentTime);
+                
+                lfo.connect(lfoGain);
+                lfoGain.connect(oscillator.frequency);
+                
+                oscillator.start();
+                lfo.start();
+                
+                // Mettre en pause initialement
+                oscillator.suspend();
+                lfo.suspend();
+                
+                // Stocker les nœuds pour un contrôle ultérieur
+                bgMusic.oscillator = oscillator;
+                bgMusic.lfo = lfo;
+                bgMusic.gainNode = gainNode;
+                
+            } catch (error) {
+                console.log("L'audio n'est pas supporté par ce navigateur:", error);
+                playBtn.disabled = true;
+                pauseBtn.disabled = true;
+            }
+        }
+
+        // Gestion de l'ouverture de la fenêtre
+        startScreen.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            brizioWindow.style.display = 'block';
+            brizioWindow.classList.add('window-opening');
+            
+            // Crée les particules
+            createParticles();
+            
+            // Initialise l'audio
+            initAudio();
+        });
+
+        // Gestion de la fermeture
+        closeBtn.addEventListener('click', () => {
+            brizioWindow.style.display = 'none';
+            brizioWindow.classList.remove('window-opening');
+            startScreen.style.display = 'flex';
+            stopAudio();
+        });
+
+        // Minimiser (retour à l'écran de démarrage)
+        minimizeBtn.addEventListener('click', () => {
+            brizioWindow.style.display = 'none';
+            startScreen.style.display = 'flex';
+        });
+
+        // Plein écran
+        maximizeBtn.addEventListener('click', () => {
+            isFullscreen = !isFullscreen;
+            if (isFullscreen) {
+                brizioWindow.classList.add('fullscreen');
+                maximizeBtn.textContent = '❐';
+            } else {
+                brizioWindow.classList.remove('fullscreen');
+                maximizeBtn.textContent = '□';
+            }
+        });
+        
+        // Permet de fermer avec ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && brizioWindow.style.display === 'block') {
+                if (isFullscreen) {
+                    maximizeBtn.click();
+                } else {
+                    closeBtn.click();
+                }
+            }
+        });
+
+        // Contrôles audio
+        function playAudio() {
+            if (audioContext && oscillator) {
+                audioContext.resume().then(() => {
+                    oscillator.resume();
+                    bgMusic.lfo.resume();
+                    isPlaying = true;
+                    playBtn.style.backgroundColor = 'var(--accent-blue)';
+                    playBtn.style.color = 'white';
+                    pauseBtn.style.backgroundColor = '';
+                    pauseBtn.style.color = 'var(--primary-text)';
+                });
+            }
+        }
+
+        function stopAudio() {
+            if (audioContext && oscillator) {
+                oscillator.suspend();
+                bgMusic.lfo.suspend();
+                isPlaying = false;
+                pauseBtn.style.backgroundColor = 'var(--accent-purple)';
+                pauseBtn.style.color = 'white';
+                playBtn.style.backgroundColor = '';
+                playBtn.style.color = 'var(--primary-text)';
+            }
+        }
+
+        playBtn.addEventListener('click', playAudio);
+        pauseBtn.addEventListener('click', stopAudio);
+
+        // Navigation entre sections (désactivée pour une seule section)
+        prevBtn.addEventListener('click', () => {
+            // Navigation précédente désactivée pour une seule section
+        });
+
+        nextBtn.addEventListener('click', () => {
+            // Navigation suivante désactivée pour une seule section
+        });
+
+        // Effet de pixelisation sur les images au chargement
+        document.querySelectorAll('.section-image').forEach(img => {
+            img.classList.add('pixelate-in');
+        });
+    </script>
+</body>
+</html>
